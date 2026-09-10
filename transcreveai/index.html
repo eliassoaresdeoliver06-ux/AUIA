@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Transcreva áudio e vídeo localmente, de forma gratuita e privada." />
+    <title>AUIA | Áudio para texto</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "@huggingface/transformers": "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2"
+          ,"@ffmpeg/ffmpeg": "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js"
+          ,"@ffmpeg/util": "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/esm/index.js"
+        }
+      }
+    </script>
+    <script type="module" src="script.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="./" aria-label="AUIA - início">
+          <span class="brand-mark" aria-hidden="true"><span class="brand-letter">A</span><span class="brand-mic">🎙</span></span>
+          <span>AUIA</span>
+        </a>
+        <div class="topbar-actions">
+          <span class="privacy-note"><span class="status-dot"></span> Processamento local</span>
+          <button class="icon-button" id="theme-toggle" type="button" aria-label="Ativar modo escuro" title="Alternar tema">☼</button>
+        </div>
+      </header>
+
+      <main>
+        <section class="hero" aria-labelledby="page-title">
+          <div class="eyebrow"><span></span> Seu estúdio de texto</div>
+          <h1 id="page-title">Transforme voz em<br /><em>texto que avança.</em></h1>
+          <p>Transforme áudio e vídeo em texto gratuitamente, direto no seu navegador. Seus arquivos permanecem no seu dispositivo.</p>
+        </section>
+
+        <section class="workspace" aria-label="Área de transcrição">
+          <div class="upload-card" id="drop-zone" tabindex="0" role="button" aria-label="Selecionar arquivo de áudio ou vídeo">
+            <input id="file-input" type="file" accept="audio/*,video/*,.mp3,.wav,.m4a,.ogg,.flac,.mp4,.mov,.webm" hidden />
+            <div class="upload-icon" aria-hidden="true">↑</div>
+            <h2>Arraste seu áudio ou vídeo aqui</h2>
+            <p>ou</p>
+            <button class="primary-button" id="select-button" type="button">Selecionar arquivo <span>↗</span></button>
+            <small>MP3 · WAV · M4A · OGG · FLAC · MP4 · MOV · WEBM</small>
+          </div>
+
+          <div class="file-panel hidden" id="file-panel">
+            <div class="panel-heading">
+              <div>
+                <span class="section-kicker">Arquivo pronto</span>
+                <h2>Seu material</h2>
+              </div>
+              <button class="text-button" id="replace-button" type="button">Trocar arquivo</button>
+            </div>
+            <div class="media-preview" id="media-preview"></div>
+            <div class="file-details">
+              <div class="file-name-wrap"><span class="file-type-icon">♫</span><div><strong id="file-name">-</strong><span id="file-format">-</span></div></div>
+              <div class="meta-item"><span>Tamanho</span><strong id="file-size">-</strong></div>
+              <div class="meta-item"><span>Duração</span><strong id="file-duration">Calculando...</strong></div>
+            </div>
+            <div class="controls-row">
+              <label class="field-label" for="language-select">Idioma da fala (escolha corretamente)
+                <select id="language-select">
+                  <option value="pt" selected>Português (Brasil) - recomendado</option>
+                  <option value="en">English</option>
+                  <option value="es">Español</option>
+                  <option value="fr">Français</option>
+                  <option value="de">Deutsch</option>
+                  <option value="it">Italiano</option>
+                  <option value="auto">Detectar idioma (experimental)</option>
+                </select>
+              </label>
+              <button class="transcribe-button" id="transcribe-button" type="button"><span>▶</span> Iniciar transcrição</button>
+            </div>
+          </div>
+
+          <div class="progress-panel hidden" id="progress-panel" aria-live="polite">
+            <div class="progress-top"><div><span class="pulse"></span><strong id="progress-label">🧠 Preparando o modelo...</strong></div><strong id="progress-percent">0%</strong></div>
+            <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
+            <p id="progress-detail">Na primeira vez, o modelo gratuito será baixado e ficará em cache no navegador.</p>
+          </div>
+
+          <section class="compare-panel hidden" id="compare-panel" aria-labelledby="compare-title">
+            <div class="result-heading">
+              <div><span class="section-kicker">Conferência</span><h2 id="compare-title">Ouça e compare</h2></div>
+              <span class="compare-hint">Clique em uma fala para ir direto ao trecho</span>
+            </div>
+            <div class="compare-layout">
+              <div class="compare-player-wrap" id="compare-player-wrap"></div>
+              <div class="segment-list" id="segment-list" aria-live="polite"></div>
+            </div>
+            <div class="learning-bar">
+              <div><strong>Aprendizado local</strong><span id="learning-status">Revise os trechos e salve os termos corrigidos.</span></div>
+              <button class="learning-button" id="save-learning" type="button">Salvar correções</button>
+            </div>
+          </section>
+
+          <div class="result-panel" id="result-panel">
+            <div class="result-heading">
+              <div><span class="section-kicker">Resultado</span><h2>Transcrição <span class="success-badge hidden" id="success-badge">Concluída</span></h2></div>
+              <span class="word-count" id="word-count">0 palavras</span>
+            </div>
+            <textarea id="transcript" spellcheck="true" placeholder="O texto transcrito aparecerá aqui..."></textarea>
+            <div class="result-actions">
+              <button class="secondary-button" id="copy-button" type="button">▣ <span>Copiar texto</span></button>
+              <button class="secondary-button" id="txt-button" type="button">↓ <span>Baixar TXT</span></button>
+              <button class="secondary-button" id="srt-button" type="button">◴ <span>Baixar SRT</span></button>
+              <button class="clear-button" id="clear-button" type="button">× <span>Limpar</span></button>
+            </div>
+          </div>
+
+          <div class="alert hidden" id="alert" role="alert"><span>!</span><p></p><button type="button" aria-label="Fechar aviso">×</button></div>
+        </section>
+      </main>
+
+      <footer><span>AUIA</span><span>Gratuito por design · Seus dados ficam com você</span></footer>
+    </div>
+  </body>
+</html>
